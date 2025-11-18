@@ -1,8 +1,7 @@
 import { routeAgentRequest, type Schedule } from "agents";
-
-import { getSchedulePrompt } from "agents/schedule";
-
 import { AIChatAgent } from "agents/ai-chat-agent";
+import { tools, executions, initializeUnsplashMcp } from "./tools";
+import { createMcpHandler } from "agents/mcp";
 import {
   generateId,
   streamText,
@@ -15,17 +14,14 @@ import {
 } from "ai";
 import { createWorkersAI } from 'workers-ai-provider';
 import { processToolCalls, cleanupMessages } from "./utils";
-import { tools, executions } from "./tools";
 import { env } from "cloudflare:workers";
 
 const workersai = createWorkersAI({ binding: env.AI });
 const model = workersai("@cf/meta/llama-3.1-8b-instruct-fp8");
-// Cloudflare AI Gateway
-// const openai = createOpenAI({
-//   apiKey: env.OPENAI_API_KEY,
-//   baseURL: env.GATEWAY_BASE_URL,
-// });
 
+// Initialize Unsplash MCP server (no authentication required)
+const mcp = initializeUnsplashMcp();
+const mcpHandler = createMcpHandler(mcp);
 /**
  * Chat Agent implementation that handles real-time AI chat interactions
  */
@@ -37,14 +33,10 @@ export class Chat extends AIChatAgent<Env> {
     onFinish: StreamTextOnFinishCallback<ToolSet>,
     _options?: { abortSignal?: AbortSignal }
   ) {
-    // const mcpConnection = await this.mcp.connect(
-    //   "https://path-to-mcp-server/sse"
-    // );
-
-    // Collect all tools, including MCP tools
+    // Merge local tools with MCP tools from Pinterest
+    
     const allTools = {
-      ...tools,
-      ...this.mcp.getAITools()
+      ...tools
     };
 
     const stream = createUIMessageStream({
@@ -58,16 +50,17 @@ export class Chat extends AIChatAgent<Env> {
           messages: cleanedMessages,
           dataStream: writer,
           tools: allTools,
-          executions
+          executions: executions
         });
 
         const result = streamText({
-          system: `You are a helpful assistant that can do various tasks...
-          
+          system: `You are a helpful assistant that can do various tasks including searching Unsplash for high-quality photos.
 
-${getSchedulePrompt({ date: new Date() })}
+You have access to Unsplash tools:
+- search_unsplash_photos: Search for photos based on a description or query
 
 If the user asks to schedule a task, use the schedule tool to schedule the task.
+If the user asks about photos, images, or wants to search for visual content, use the Unsplash search tools.
 `,
 
           messages: convertToModelMessages(processedMessages),
@@ -112,9 +105,12 @@ If the user asks to schedule a task, use the schedule tool to schedule the task.
  */
 export default {
   async fetch(request: Request, env: Env, _ctx: ExecutionContext) {
-    return (await routeAgentRequest(request, env)) || Response.json({
-      success: true,
-      message: "CF-AI is running."
-    });
+    const url = new URL(request.url);
+    if (url.pathname.startsWith("/mcp")) return mcpHandler(request, env, _ctx);
+
+    return (
+      (await routeAgentRequest(request, env)) ??
+      new Response("Not found", { status: 404 })
+    );
   }
 } satisfies ExportedHandler<Env>;

@@ -1,133 +1,196 @@
-/**
- * Tool definitions for the AI chat agent
- * Tools can either require human confirmation or execute automatically
- */
-import { tool, type ToolSet } from "ai";
-import { z } from "zod/v3";
 
-import type { Chat } from "./server";
-import { getCurrentAgent } from "agents";
-import { scheduleSchema } from "agents/schedule";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { z } from "zod";
+import { tool, type ToolSet} from "ai";
 
-/**
- * Weather information tool that requires human confirmation
- * When invoked, this will present a confirmation dialog to the user
- */
-const getWeatherInformation = tool({
-  description: "show the weather in a given city to the user",
-  inputSchema: z.object({ city: z.string() })
-  // Omitting execute function makes this tool require human confirmation
-});
-
-/**
- * Local time tool that executes automatically
- * Since it includes an execute function, it will run without user confirmation
- * This is suitable for low-risk operations that don't need oversight
- */
-const getLocalTime = tool({
-  description: "get the local time for a specified location",
-  inputSchema: z.object({ location: z.string() }),
-  execute: async ({ location }) => {
-    console.log(`Getting local time for ${location}`);
-    return "10am";
+interface UnsplashPhoto {
+  id: string;
+  created_at: string;
+  width: number;
+  height: number;
+  color: string;
+  blur_hash: string;
+  likes: number;
+  liked_by_user: boolean;
+  description: string | null;
+  alt_description?: string;
+  user: {
+    id: string;
+    username: string;
+    name: string;
+    first_name: string;
+    last_name: string;
+    instagram_username: string | null;
+    twitter_username: string | null;
+    portfolio_url: string | null;
+    profile_image: {
+      small: string;
+      medium: string;
+      large: string;
+    };
+    links: {
+      self: string;
+      html: string;
+      photos: string;
+      likes: string;
+    }
+  };
+  current_user_collections: any[];
+  urls: {
+    raw: string;
+    full: string;
+    regular: string;
+    small: string;
+    thumb: string;
+  };
+  links: {
+    self: string;
+    html: string;
+    download: string;
   }
-});
-
-const scheduleTask = tool({
-  description: "A tool to schedule a task to be executed at a later time",
-  inputSchema: scheduleSchema,
-  execute: async ({ when, description }) => {
-    // we can now read the agent context from the ALS store
-    const { agent } = getCurrentAgent<Chat>();
-
-    function throwError(msg: string): string {
-      throw new Error(msg);
-    }
-    if (when.type === "no-schedule") {
-      return "Not a valid schedule input";
-    }
-    const input =
-      when.type === "scheduled"
-        ? when.date // scheduled
-        : when.type === "delayed"
-          ? when.delayInSeconds // delayed
-          : when.type === "cron"
-            ? when.cron // cron
-            : throwError("not a valid schedule input");
-    try {
-      agent!.schedule(input!, "executeTask", description);
-    } catch (error) {
-      console.error("error scheduling task", error);
-      return `Error scheduling task: ${error}`;
-    }
-    return `Task scheduled for type "${when.type}" : ${input}`;
-  }
-});
+}
 
 /**
- * Tool to list all scheduled tasks
- * This executes automatically without requiring human confirmation
+ * Unsplash API response interface
  */
-const getScheduledTasks = tool({
-  description: "List all tasks that have been scheduled",
-  inputSchema: z.object({}),
-  execute: async () => {
-    const { agent } = getCurrentAgent<Chat>();
+interface UnsplashSearchResponse {
+  total: number;
+  total_pages: number;
+  results: UnsplashPhoto[];
+}
 
-    try {
-      const tasks = agent!.getSchedules();
-      if (!tasks || tasks.length === 0) {
-        return "No scheduled tasks found.";
+/**
+ * Initialize Unsplash MCP server with tools
+ */
+const searchTool = tool({
+    description: "Search for Unsplash photos based on a query description. Returns a list of photos matching the search criteria.",
+    inputSchema: z.object({
+      query: z.string().describe("Search query to find photos (e.g., 'modern kitchen designs', 'summer outfits', 'nature landscapes')"),
+      limit: z.number().optional().default(10).describe("Maximum number of photos to return (default: 10, max: 30)")
+    })
+})
+
+export function initializeUnsplashMcp() {
+  const mcp = new McpServer({
+    name: "unsplash-mcp",
+    version: "1.0.0"
+  });
+
+  mcp.registerResource(
+    "list of photos",
+    "https://unsplash.com",
+    {},
+    async (_uri, extra) => {
+      console.log("HEADERS", extra.requestInfo?.headers);
+      return {
+        contents: [
+          {
+            uri: "https://unsplash.com",
+            mimeType: "text/html",
+            text: "Unsplash Photo Search"
+          }
+        ]
+      };
+    }
+  );
+
+  /**
+   * Register the search photos tool
+   * Uses Unsplash API /search/photos endpoint (no auth required for basic search)
+   */
+  mcp.registerTool(
+    "search_unsplash_photos",
+    {
+      description: "Search for Unsplash photos based on a query description. Returns a list of high-quality photos matching the search criteria.",
+      inputSchema: {
+        query: z.string().describe("Search query to find photos (e.g., 'modern kitchen designs', 'summer outfits', 'nature landscapes')"),
+        limit: z.number().optional().default(10).describe("Maximum number of photos to return (default: 10, max: 30)")
       }
-      return tasks;
-    } catch (error) {
-      console.error("Error listing scheduled tasks", error);
-      return `Error listing scheduled tasks: ${error}`;
-    }
-  }
-});
+    },
+    async (args) => {
+      const query = args.query || "";
+      const limit = Math.min(args.limit || 10, 30);
 
-/**
- * Tool to cancel a scheduled task by its ID
- * This executes automatically without requiring human confirmation
- */
-const cancelScheduledTask = tool({
-  description: "Cancel a scheduled task using its ID",
-  inputSchema: z.object({
-    taskId: z.string().describe("The ID of the task to cancel")
-  }),
-  execute: async ({ taskId }) => {
-    const { agent } = getCurrentAgent<Chat>();
-    try {
-      await agent!.cancelSchedule(taskId);
-      return `Task ${taskId} has been successfully canceled.`;
-    } catch (error) {
-      console.error("Error canceling scheduled task", error);
-      return `Error canceling task ${taskId}: ${error}`;
-    }
-  }
-});
+      try {
+        // Using Unsplash Source API which doesn't require authentication
+        // Alternative: Use official API with access key if needed
+        const url = new URL("https://api.unsplash.com/search/photos");
+        url.searchParams.set("query", query);
+        url.searchParams.set("per_page", limit.toString());
+        url.searchParams.set("client_id", "demo"); // Demo client for public access
 
-/**
- * Export all available tools
- * These will be provided to the AI model to describe available capabilities
- */
+        const response = await fetch(url.toString(), {
+          method: "GET",
+          headers: {
+            "Accept-Version": "v1"
+          }
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(
+            `Unsplash API error (${response.status}): ${errorText}`
+          );
+        }
+
+        const data = (await response.json()) as UnsplashSearchResponse;
+
+        if (!data.results || data.results.length === 0) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `No photos found for query: "${query}"`
+              }
+            ]
+          };
+        }
+
+        // Format photos for display
+        const formattedPhotos = data.results.map((photo, index) => {
+          return `Photo ${index + 1}:
+- ID: ${photo.id}
+- Description: ${photo.description || photo.alt_description || "No description"}
+- Image URL: ${photo.urls.regular}
+- Full Resolution: ${photo.urls.full}
+- Thumbnail: ${photo.urls.thumb}
+- Link: ${photo.links.html}
+- Photographer: ${photo.user.name} (@${photo.user.username})
+- Dimensions: ${photo.width}x${photo.height}
+- Created: ${photo.created_at}`;
+        });
+
+        const resultText = `Found ${data.results.length} photos (total: ${data.total}) for query: "${query}"\n\n${formattedPhotos.join("\n\n")}`;
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: resultText
+            }
+          ]
+        };
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error occurred";
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error searching Unsplash photos: ${errorMessage}`
+            }
+          ],
+          isError: true
+        };
+      }
+    }
+  );
+  return mcp;
+}
+
 export const tools = {
-  getWeatherInformation,
-  getLocalTime,
-  scheduleTask,
-  getScheduledTasks,
-  cancelScheduledTask
+  searchTool,
 } satisfies ToolSet;
 
-/**
- * Implementation of confirmation-required tools
- * This object contains the actual logic for tools that need human approval
- * Each function here corresponds to a tool above that doesn't have an execute function
- */
-export const executions = {
-  getWeatherInformation: async ({ city }: { city: string }) => {
-    console.log(`Getting weather information for ${city}`);
-    return `The weather in ${city} is sunny`;
-  }
-};
+export const executions = {}
+
