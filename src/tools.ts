@@ -1,7 +1,6 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { tool, type ToolSet} from "ai";
 
 interface UnsplashPhoto {
   id: string;
@@ -50,15 +49,11 @@ interface UnsplashPhoto {
   }
 }
 
-/**
- * Unsplash API response interface
- */
 interface UnsplashSearchResponse {
   total: number;
   total_pages: number;
   results: UnsplashPhoto[];
 }
-
 
 export function initializeUnsplashMcp() {
   const mcp = new McpServer({
@@ -84,6 +79,45 @@ export function initializeUnsplashMcp() {
     }
   );
 
+  mcp.registerTool(
+    "proxy_image",
+    {
+      description: "Fetch an image from a URL and return it CORS-safe",
+      inputSchema: {
+        url: z.string().describe("URL of the image to proxy")
+      }
+    },
+    async ({ url }) => {
+      const response = await fetch(url);
+      const arrayBuffer = await response.arrayBuffer();
+      const contentType = response.headers.get("content-type") || "image/jpeg";
+
+      // Convert ArrayBuffer to Base64
+      let binary = '';
+      const bytes = new Uint8Array(arrayBuffer);
+      const chunkSize = 0x8000; // process in chunks for large images
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        const chunk = bytes.subarray(i, i + chunkSize);
+        binary += String.fromCharCode(...chunk);
+      }
+      const base64 = btoa(binary);
+
+      return {
+        content: [
+          {
+            type: "resource",
+            resource: {
+              mimeType: contentType,
+              blob: `data:${contentType};base64,${base64}`,
+              uri: url // optional: original URL
+            }
+          }
+        ]
+      };
+    }
+  );
+
+
   /**
    * Register the search photos tool
    * Uses Unsplash API /search/photos endpoint (no auth required for basic search)
@@ -103,18 +137,13 @@ export function initializeUnsplashMcp() {
 
       try {
         // Using Unsplash Source API which doesn't require authentication
-        // Alternative: Use official API with access key if needed
+
         const url = new URL("https://api.unsplash.com/search/photos");
         url.searchParams.set("query", query);
         url.searchParams.set("per_page", limit.toString());
         url.searchParams.set("client_id", "demo"); // Demo client for public access
 
-        const response = await fetch(url.toString(), {
-          method: "GET",
-          headers: {
-            "Accept-Version": "v1"
-          }
-        });
+        const response = await fetch(url.toString());
 
         if (!response.ok) {
           const errorText = await response.text();
@@ -123,7 +152,7 @@ export function initializeUnsplashMcp() {
           );
         }
 
-        const data = (await response.json()) as UnsplashSearchResponse;
+        const data = await response.json() as UnsplashSearchResponse;
 
         if (!data.results || data.results.length === 0) {
           return {
@@ -136,22 +165,16 @@ export function initializeUnsplashMcp() {
           };
         }
 
-        // Format photos for display
-        const formattedPhotos = data.results.map((photo, index) => {
-          return `Photo ${index + 1}:
-- ID: ${photo.id}
-- Description: ${photo.description || photo.alt_description || "No description"}
-- Image URL: ${photo.urls.regular}
-- Full Resolution: ${photo.urls.full}
-- Thumbnail: ${photo.urls.thumb}
-- Link: ${photo.links.html}
-- Photographer: ${photo.user.name} (@${photo.user.username})
-- Dimensions: ${photo.width}x${photo.height}
-- Created: ${photo.created_at}`;
-        });
-
-        const resultText = `Found ${data.results.length} photos (total: ${data.total}) for query: "${query}"\n\n${formattedPhotos.join("\n\n")}`;
-
+        const photos = data.results.map(photo => ({
+          title: photo.description || photo.alt_description || "Untitled",
+          author: `${photo.user.name} (@${photo.user.username})`,
+          //proxyUrl: `/mcp/proxy_image?url=${encodeURIComponent(photo.urls.regular)}`,
+          //unsplashPage: photo.links.html
+        }));
+const resultText = `Found ${data.results.length} photos (total: ${data.total})
+ for query: "${query}" \n\n${photos.map(p => `**${p.title}**\nAuthor: 
+  ${p.author}`)
+  .join("\n\n---\n\n")}`;
         return {
           content: [
             {

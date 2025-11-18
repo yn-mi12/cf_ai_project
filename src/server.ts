@@ -62,9 +62,9 @@ You have access to these tools:
 
 When a user asks for photos or images:
 1. Use the search_unsplash_photos tool with their query
-2. The tool returns markdown-formatted image results that will display as actual images
-3. The results include image previews, photographer credits, and links to full-size images
-4. Present the images in an organized, gallery-like format
+2. List the titles and authors of the top photos found in your response
+
+Be concise and informative in your responses.
 
 Always use the tool to search for images when users ask for photos, pictures, or visual content.
 
