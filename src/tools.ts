@@ -54,7 +54,7 @@ interface UnsplashSearchResponse {
   results: UnsplashPhoto[];
 }
 
-export function initializeUnsplashMcp() {
+export function initializeUnsplashMcp(env?: { UNSPLASH_CLIENT_ACCESS?: string; UNSPLASH_CLIENT_SECRET?: string }) {
   const mcp = new McpServer({
     name: "unsplash-mcp",
     version: "1.0.0"
@@ -143,12 +143,13 @@ export function initializeUnsplashMcp() {
       const limit = Math.min(args.limit || 10, 30);
 
       try {
-        // Using Unsplash Source API which doesn't require authentication
+        // Get the access token from environment or fall back to demo
+        const accessKey = env?.UNSPLASH_CLIENT_ACCESS || "demo";
 
         const url = new URL("https://api.unsplash.com/search/photos");
         url.searchParams.set("query", query);
         url.searchParams.set("per_page", limit.toString());
-        url.searchParams.set("client_id", "demo"); // Demo client for public access
+        url.searchParams.set("client_id", accessKey);
 
         const response = await fetch(url.toString());
 

@@ -19,8 +19,8 @@ import { env } from "cloudflare:workers";
 const workersai = createWorkersAI({ binding: env.AI });
 const model = workersai("@cf/meta/llama-3.1-8b-instruct-fp8");
 
-// Initialize Unsplash MCP server (no authentication required)
-const mcp = initializeUnsplashMcp();
+// Initialize Unsplash MCP server with environment credentials
+const mcp = initializeUnsplashMcp(env);
 const mcpHandler = createMcpHandler(mcp);
 /**
  * Chat Agent implementation that handles real-time AI chat interactions
