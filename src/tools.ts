@@ -1,4 +1,3 @@
-
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
@@ -32,9 +31,9 @@ interface UnsplashPhoto {
       html: string;
       photos: string;
       likes: string;
-    }
+    };
   };
-  current_user_collections: any[];
+  current_user_collections: [];
   urls: {
     raw: string;
     full: string;
@@ -46,7 +45,7 @@ interface UnsplashPhoto {
     self: string;
     html: string;
     download: string;
-  }
+  };
 }
 
 interface UnsplashSearchResponse {
@@ -93,7 +92,7 @@ export function initializeUnsplashMcp() {
       const contentType = response.headers.get("content-type") || "image/jpeg";
 
       // Convert ArrayBuffer to Base64
-      let binary = '';
+      let binary = "";
       const bytes = new Uint8Array(arrayBuffer);
       const chunkSize = 0x8000; // process in chunks for large images
       for (let i = 0; i < bytes.length; i += chunkSize) {
@@ -117,7 +116,6 @@ export function initializeUnsplashMcp() {
     }
   );
 
-
   /**
    * Register the search photos tool
    * Uses Unsplash API /search/photos endpoint (no auth required for basic search)
@@ -125,10 +123,19 @@ export function initializeUnsplashMcp() {
   mcp.registerTool(
     "search_unsplash_photos",
     {
-      description: "Search for Unsplash photos based on a query description. Returns a list of high-quality photos matching the search criteria.",
+      description:
+        "Search for Unsplash photos based on a query description. Returns a list of high-quality photos matching the search criteria.",
       inputSchema: {
-        query: z.string().describe("Search query to find photos (e.g., 'modern kitchen designs', 'summer outfits', 'nature landscapes')"),
-        limit: z.number().optional().default(10).describe("Maximum number of photos to return (default: 10, max: 30)")
+        query: z
+          .string()
+          .describe(
+            "Search query to find photos (e.g., 'modern kitchen designs', 'summer outfits', 'nature landscapes')"
+          ),
+        limit: z
+          .number()
+          .optional()
+          .default(10)
+          .describe("Maximum number of photos to return (default: 10, max: 30)")
       }
     },
     async (args) => {
@@ -152,7 +159,7 @@ export function initializeUnsplashMcp() {
           );
         }
 
-        const data = await response.json() as UnsplashSearchResponse;
+        const data = (await response.json()) as UnsplashSearchResponse;
 
         if (!data.results || data.results.length === 0) {
           return {
@@ -165,16 +172,19 @@ export function initializeUnsplashMcp() {
           };
         }
 
-        const photos = data.results.map(photo => ({
+        const photos = data.results.map((photo) => ({
           title: photo.description || photo.alt_description || "Untitled",
-          author: `${photo.user.name} (@${photo.user.username})`,
+          author: `${photo.user.name} (@${photo.user.username})`
           //proxyUrl: `/mcp/proxy_image?url=${encodeURIComponent(photo.urls.regular)}`,
           //unsplashPage: photo.links.html
         }));
-const resultText = `Found ${data.results.length} photos (total: ${data.total})
- for query: "${query}" \n\n${photos.map(p => `**${p.title}**\nAuthor: 
-  ${p.author}`)
-  .join("\n\n---\n\n")}`;
+        const resultText = `Found ${data.results.length} photos (total: ${data.total})
+ for query: "${query}" \n\n${photos
+   .map(
+     (p) => `**${p.title}**\nAuthor: 
+  ${p.author}`
+   )
+   .join("\n\n---\n\n")}`;
         return {
           content: [
             {
@@ -203,4 +213,3 @@ const resultText = `Found ${data.results.length} photos (total: ${data.total})
 
 export const tools = {};
 export const executions = {};
-

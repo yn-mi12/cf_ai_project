@@ -1,10 +1,9 @@
 /** biome-ignore-all lint/correctness/useUniqueElementIds: it's alright */
-import { useEffect, useState, useRef, useCallback, use } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useAgent } from "agents/react";
 import { isToolUIPart } from "ai";
 import { useAgentChat } from "agents/ai-react";
 import type { UIMessage } from "@ai-sdk/react";
-import type { tools } from "./tools";
 
 // Component imports
 import { Button } from "@/components/button/Button";
@@ -25,7 +24,6 @@ import {
   PaperPlaneTilt,
   Stop
 } from "@phosphor-icons/react";
-
 
 export default function Chat() {
   const [theme, setTheme] = useState<"dark" | "light">(() => {
@@ -116,14 +114,12 @@ export default function Chat() {
 
   const pendingToolCallConfirmation = agentMessages.some((m: UIMessage) =>
     m.parts?.some(
-      (part) =>
-        isToolUIPart(part) &&
-        part.state === "input-available" 
-        // &&
-        // Manual check inside the component
-        // toolsRequiringConfirmation.includes(
-        //   part.type.replace("tool-", "") as keyof typeof tools
-        // )
+      (part) => isToolUIPart(part) && part.state === "input-available"
+      // &&
+      // Manual check inside the component
+      // toolsRequiringConfirmation.includes(
+      //   part.type.replace("tool-", "") as keyof typeof tools
+      // )
     )
   );
 
@@ -209,8 +205,10 @@ export default function Chat() {
                     </li>
                     <li className="flex items-center gap-2">
                       <span className="text-[#F48120]">•</span>
-                      <span>A group of images by giving the description and
-                         specifying the number of results you want</span>
+                      <span>
+                        A group of images by giving the description and
+                        specifying the number of results you want
+                      </span>
                     </li>
                   </ul>
                 </div>
@@ -294,7 +292,7 @@ export default function Chat() {
 
                           if (isToolUIPart(part) && m.role === "assistant") {
                             const toolCallId = part.toolCallId;
-                            const toolName = part.type.replace("tool-", "");
+                            //const toolName = part.type.replace("tool-", "");
                             const needsConfirmation = false;
                             return (
                               <ToolInvocationCard

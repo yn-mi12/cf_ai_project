@@ -12,7 +12,7 @@ import {
   createUIMessageStreamResponse,
   type ToolSet
 } from "ai";
-import { createWorkersAI } from 'workers-ai-provider';
+import { createWorkersAI } from "workers-ai-provider";
 import { processToolCalls, cleanupMessages } from "./utils";
 import { env } from "cloudflare:workers";
 
@@ -34,7 +34,7 @@ export class Chat extends AIChatAgent<Env> {
     _options?: { abortSignal?: AbortSignal }
   ) {
     // Merge local tools with MCP tools from Pinterest
-    
+
     const allTools = {
       ...tools,
       ...this.mcp.getAITools()
