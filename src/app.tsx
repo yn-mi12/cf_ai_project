@@ -251,7 +251,7 @@ export default function Chat() {
                             return (
                               // biome-ignore lint/suspicious/noArrayIndexKey: immutable index
                               <div key={i}>
-                                {/* <Card
+                                <Card
                                   className={`p-3 rounded-md bg-neutral-100 dark:bg-neutral-900 ${
                                     isUser
                                       ? "rounded-br-none"
@@ -276,7 +276,7 @@ export default function Chat() {
                                       ""
                                     )}
                                   />
-                                </Card> */}
+                                </Card>
                                 <p
                                   className={`text-xs text-muted-foreground mt-1 ${
                                     isUser ? "text-right" : "text-left"

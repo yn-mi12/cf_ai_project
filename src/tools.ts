@@ -59,16 +59,6 @@ interface UnsplashSearchResponse {
   results: UnsplashPhoto[];
 }
 
-/**
- * Initialize Unsplash MCP server with tools
- */
-const searchTool = tool({
-    description: "Search for Unsplash photos based on a query description. Returns a list of photos matching the search criteria.",
-    inputSchema: z.object({
-      query: z.string().describe("Search query to find photos (e.g., 'modern kitchen designs', 'summer outfits', 'nature landscapes')"),
-      limit: z.number().optional().default(10).describe("Maximum number of photos to return (default: 10, max: 30)")
-    })
-})
 
 export function initializeUnsplashMcp() {
   const mcp = new McpServer({
@@ -188,9 +178,6 @@ export function initializeUnsplashMcp() {
   return mcp;
 }
 
-export const tools = {
-  searchTool,
-} satisfies ToolSet;
-
-export const executions = {}
+export const tools = {};
+export const executions = {};
 

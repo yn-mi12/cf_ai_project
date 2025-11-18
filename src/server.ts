@@ -36,7 +36,8 @@ export class Chat extends AIChatAgent<Env> {
     // Merge local tools with MCP tools from Pinterest
     
     const allTools = {
-      ...tools
+      ...tools,
+      ...this.mcp.getAITools()
     };
 
     const stream = createUIMessageStream({
@@ -54,13 +55,20 @@ export class Chat extends AIChatAgent<Env> {
         });
 
         const result = streamText({
-          system: `You are a helpful assistant that can do various tasks including searching Unsplash for high-quality photos.
+          system: `You are a helpful assistant that can search for and display high-quality photos from Unsplash.
 
-You have access to Unsplash tools:
+You have access to these tools:
 - search_unsplash_photos: Search for photos based on a description or query
 
+When a user asks for photos or images:
+1. Use the search_unsplash_photos tool with their query
+2. The tool returns markdown-formatted image results that will display as actual images
+3. The results include image previews, photographer credits, and links to full-size images
+4. Present the images in an organized, gallery-like format
+
+Always use the tool to search for images when users ask for photos, pictures, or visual content.
+
 If the user asks to schedule a task, use the schedule tool to schedule the task.
-If the user asks about photos, images, or wants to search for visual content, use the Unsplash search tools.
 `,
 
           messages: convertToModelMessages(processedMessages),
