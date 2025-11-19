@@ -111,6 +111,7 @@ ${
   needsTools
     ? `
 When a user asks for photos or images:
+IMPORTANT: try to derive a number even if it is written in words (e.g., "five" = 5).
 1. Use the search_unsplash_photos tool with their query, but do NOT mention the tool usage in your response
 2. The tool returns markdown-formatted image results that you should display as actual images
 3. You should include image previews, photographer credits and likes as provided by the tool
