@@ -1,6 +1,6 @@
 import { routeAgentRequest, type Schedule } from "agents";
 import { AIChatAgent } from "agents/ai-chat-agent";
-import { tools, executions, initializeUnsplashMcp } from "./tools";
+import { initializeUnsplashMcp } from "./tools";
 import { createMcpHandler } from "agents/mcp";
 import {
   generateId,
@@ -20,8 +20,9 @@ const workersai = createWorkersAI({ binding: env.AI });
 const model = workersai("@cf/meta/llama-3.1-8b-instruct-fp8");
 
 // Initialize Unsplash MCP server with environment credentials
-const mcp = initializeUnsplashMcp(env);
+const { mcp, searchPhotosTool } = initializeUnsplashMcp(env);
 const mcpHandler = createMcpHandler(mcp);
+
 /**
  * Chat Agent implementation that handles real-time AI chat interactions
  */
@@ -33,12 +34,12 @@ export class Chat extends AIChatAgent<Env> {
     onFinish: StreamTextOnFinishCallback<ToolSet>,
     _options?: { abortSignal?: AbortSignal }
   ) {
-    // Merge local tools with MCP tools from Pinterest
-
     const allTools = {
-      ...tools,
-      ...this.mcp.getAITools()
-    };
+      search_unsplash_photos: searchPhotosTool
+    } satisfies ToolSet;
+
+    // Debug: Log available tools
+    console.log("Available tools:", Object.keys(allTools));
 
     const stream = createUIMessageStream({
       execute: async ({ writer }) => {
@@ -51,7 +52,7 @@ export class Chat extends AIChatAgent<Env> {
           messages: cleanedMessages,
           dataStream: writer,
           tools: allTools,
-          executions: executions
+          executions: {}
         });
 
         const result = streamText({
@@ -60,11 +61,14 @@ export class Chat extends AIChatAgent<Env> {
 You have access to these tools:
 - search_unsplash_photos: Search for photos based on a description or query
 
-When a user asks for photos or images:
-1. Use the search_unsplash_photos tool with their query
-2. List the titles and authors of the top photos found in your response
+CRITICAL INSTRUCTIONS:
+- You MUST use the search_unsplash_photos tool for ANY image request
+- You CANNOT generate image URLs yourself
+- You CANNOT create markdown images without using the tool first
+- When a user asks for photos, your ONLY response should be to call search_unsplash_photos
+- Display exactly what the tool returns, nothing more, nothing less
 
-Be concise and informative in your responses.
+DO NOT create any ![image](url) markdown unless it comes from the search_unsplash_photos tool result.
 
 Always use the tool to search for images when users ask for photos, pictures, or visual content.
 
@@ -114,6 +118,41 @@ If the user asks to schedule a task, use the schedule tool to schedule the task.
 export default {
   async fetch(request: Request, env: Env, _ctx: ExecutionContext) {
     const url = new URL(request.url);
+
+    // Handle image proxy requests directly
+    if (url.pathname === "/mcp/proxy_image") {
+      const imageUrl = url.searchParams.get("url");
+      if (!imageUrl) {
+        return new Response("Missing url parameter", { status: 400 });
+      }
+
+      try {
+        const response = await fetch(decodeURIComponent(imageUrl));
+        if (!response.ok) {
+          return new Response("Failed to fetch image", {
+            status: response.status
+          });
+        }
+
+        const contentType =
+          response.headers.get("content-type") || "image/jpeg";
+        const imageData = await response.arrayBuffer();
+
+        return new Response(imageData, {
+          headers: {
+            "Content-Type": contentType,
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET",
+            "Access-Control-Allow-Headers": "Content-Type",
+            "Cache-Control": "public, max-age=3600"
+          }
+        });
+      } catch (error) {
+        console.error("Error proxying image:", error);
+        return new Response("Failed to proxy image", { status: 500 });
+      }
+    }
+
     if (url.pathname.startsWith("/mcp")) return mcpHandler(request, env, _ctx);
 
     return (

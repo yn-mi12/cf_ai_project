@@ -1,4 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { tool } from "ai";
 import { z } from "zod";
 
 interface UnsplashPhoto {
@@ -54,7 +55,10 @@ interface UnsplashSearchResponse {
   results: UnsplashPhoto[];
 }
 
-export function initializeUnsplashMcp(env?: { UNSPLASH_CLIENT_ACCESS?: string; UNSPLASH_CLIENT_SECRET?: string }) {
+export function initializeUnsplashMcp(env?: {
+  UNSPLASH_CLIENT_ACCESS?: string;
+  UNSPLASH_CLIENT_SECRET?: string;
+}) {
   const mcp = new McpServer({
     name: "unsplash-mcp",
     version: "1.0.0"
@@ -78,43 +82,91 @@ export function initializeUnsplashMcp(env?: { UNSPLASH_CLIENT_ACCESS?: string; U
     }
   );
 
-  mcp.registerTool(
-    "proxy_image",
-    {
-      description: "Fetch an image from a URL and return it CORS-safe",
-      inputSchema: {
-        url: z.string().describe("URL of the image to proxy")
-      }
-    },
-    async ({ url }) => {
-      const response = await fetch(url);
-      const arrayBuffer = await response.arrayBuffer();
-      const contentType = response.headers.get("content-type") || "image/jpeg";
+  // MCP implementation that returns the expected format
+  const searchPhotos = async (args: { query?: string; limit?: number }) => {
+    const query = args.query || "";
+    const limit = Math.min(args.limit || 10, 30);
 
-      // Convert ArrayBuffer to Base64
-      let binary = "";
-      const bytes = new Uint8Array(arrayBuffer);
-      const chunkSize = 0x8000; // process in chunks for large images
-      for (let i = 0; i < bytes.length; i += chunkSize) {
-        const chunk = bytes.subarray(i, i + chunkSize);
-        binary += String.fromCharCode(...chunk);
+    try {
+      // Get the access token from environment or fall back to demo
+      const accessKey = env?.UNSPLASH_CLIENT_ACCESS || "demo";
+
+      const url = new URL("https://api.unsplash.com/search/photos");
+      url.searchParams.set("query", query);
+      url.searchParams.set("per_page", limit.toString());
+      url.searchParams.set("client_id", accessKey);
+
+      const response = await fetch(url.toString());
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `Unsplash API error (${response.status}): ${errorText}`
+        );
       }
-      const base64 = btoa(binary);
+
+      const data = (await response.json()) as UnsplashSearchResponse;
+
+      if (!data.results || data.results.length === 0) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `No photos found for query: "${query}"`
+            }
+          ]
+        };
+      }
+
+      const photos = data.results.map((photo) => ({
+        title: (
+          photo.description ||
+          photo.alt_description ||
+          "Untitled"
+        ).replace(/["\n\r]/g, ""),
+        author: `${photo.user.name} (@${photo.user.username})`,
+        url: `/mcp/proxy_image?url=${encodeURIComponent(photo.urls.small)}`
+      }));
+
+      // Create markdown with embedded images
+      const markdownContent = `Found ${data.results.length} photos for "${query}":
+
+${photos
+  .map(
+    (photo) =>
+      `**${photo.title}**\nBy ${photo.author}\n\n![${photo.title}](${photo.url})\n`
+  )
+  .join("\n---\n\n")}`;
+
+      // Debug logging
+      console.log("Generated markdown content:", markdownContent);
+      console.log(
+        "Photo URLs:",
+        photos.map((p) => p.url)
+      );
 
       return {
         content: [
           {
-            type: "resource",
-            resource: {
-              mimeType: contentType,
-              blob: `data:${contentType};base64,${base64}`,
-              uri: url // optional: original URL
-            }
+            type: "text" as const,
+            text: markdownContent
           }
         ]
       };
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error occurred";
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Error searching Unsplash photos: ${errorMessage}`
+          }
+        ],
+        isError: true
+      };
     }
-  );
+  };
 
   /**
    * Register the search photos tool
@@ -124,93 +176,27 @@ export function initializeUnsplashMcp(env?: { UNSPLASH_CLIENT_ACCESS?: string; U
     "search_unsplash_photos",
     {
       description:
-        "Search for Unsplash photos based on a query description. Returns a list of high-quality photos matching the search criteria.",
-      inputSchema: {
-        query: z
-          .string()
-          .describe(
-            "Search query to find photos (e.g., 'modern kitchen designs', 'summer outfits', 'nature landscapes')"
-          ),
-        limit: z
-          .number()
-          .optional()
-          .default(10)
-          .describe("Maximum number of photos to return (default: 10, max: 30)")
-      }
+        "Search for Unsplash photos based on a query description. Returns a list of high-quality photos matching the search criteria."
     },
-    async (args) => {
-      const query = args.query || "";
-      const limit = Math.min(args.limit || 10, 30);
-
-      try {
-        // Get the access token from environment or fall back to demo
-        const accessKey = env?.UNSPLASH_CLIENT_ACCESS || "demo";
-
-        const url = new URL("https://api.unsplash.com/search/photos");
-        url.searchParams.set("query", query);
-        url.searchParams.set("per_page", limit.toString());
-        url.searchParams.set("client_id", accessKey);
-
-        const response = await fetch(url.toString());
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(
-            `Unsplash API error (${response.status}): ${errorText}`
-          );
-        }
-
-        const data = (await response.json()) as UnsplashSearchResponse;
-
-        if (!data.results || data.results.length === 0) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: `No photos found for query: "${query}"`
-              }
-            ]
-          };
-        }
-
-        const photos = data.results.map((photo) => ({
-          title: photo.description || photo.alt_description || "Untitled",
-          author: `${photo.user.name} (@${photo.user.username})`
-          //proxyUrl: `/mcp/proxy_image?url=${encodeURIComponent(photo.urls.regular)}`,
-          //unsplashPage: photo.links.html
-        }));
-        const resultText = `Found ${data.results.length} photos (total: ${data.total})
- for query: "${query}" \n\n${photos
-   .map(
-     (p) => `**${p.title}**\nAuthor: 
-  ${p.author}`
-   )
-   .join("\n\n---\n\n")}`;
-        return {
-          content: [
-            {
-              type: "text",
-              text: resultText
-            }
-          ]
-        };
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Unknown error occurred";
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Error searching Unsplash photos: ${errorMessage}`
-            }
-          ],
-          isError: true
-        };
-      }
-    }
+    async (args, _extra) => searchPhotos(args)
   );
-  return mcp;
-}
 
-export const tools = {};
-export const executions = {};
+  // Create the AI tool using the tool function
+  const searchPhotosTool = tool({
+    description:
+      "Search for Unsplash photos based on a query description. Returns a list of high-quality photos matching the search criteria.",
+    inputSchema: z.object({
+      query: z.string().describe("The search query for finding photos"),
+      limit: z
+        .number()
+        .optional()
+        .default(10)
+        .describe("Number of photos to return (max 30)")
+    }),
+    execute: async (args) => {
+      return await searchPhotos(args);
+    }
+  });
+
+  return { mcp, searchPhotosTool };
+}

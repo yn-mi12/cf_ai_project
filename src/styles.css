@@ -18,6 +18,14 @@
   @apply bg-neutral-50 dark:bg-neutral-850;
 }
 
+/* Markdown Image Styling */
+.markdown-body img {
+  @apply max-w-full h-auto rounded-lg shadow-sm my-2 border border-neutral-200 dark:border-neutral-700;
+}
+.markdown-body p img {
+  @apply block mx-auto;
+}
+
 /* Custom variants */
 @custom-variant dark (&:where(.dark, .dark *));
 @custom-variant interactive (&:where(.interactive, .interactive *));
