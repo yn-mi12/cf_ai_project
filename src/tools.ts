@@ -121,7 +121,8 @@ export function initializeUnsplashMcp(env?: {
       const photos = data.results.map((photo) => ({
         title: photo.description || photo.alt_description || "Untitled",
         author: `${photo.user.name} (@${photo.user.username})`,
-        url: photo.urls.small
+        url: photo.urls.small,
+        likes: photo.likes
       }));
 
       // Create markdown with embedded images
@@ -130,16 +131,11 @@ export function initializeUnsplashMcp(env?: {
 ${photos
   .map(
     (photo) =>
-      `**${photo.title}**\nBy ${photo.author}\n\n![${photo.title}](${photo.url})\n`
+      `**${photo.title}**\nBy ${photo.author}\n\n![${photo.title}](${photo.url})\n
+    liked by ${photo.likes}.`
   )
   .join("\n---\n\n")}`;
 
-      // Debug logging
-      console.log("Generated markdown content:", markdownContent);
-      console.log(
-        "Photo URLs:",
-        photos.map((p) => p.url)
-      );
 
       return {
         content: [
