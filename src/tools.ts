@@ -121,21 +121,24 @@ export function initializeUnsplashMcp(env?: {
       const photos = data.results.map((photo) => ({
         title: photo.description || photo.alt_description || "Untitled",
         author: `${photo.user.name} (@${photo.user.username})`,
-        url: photo.urls.small,
+        authorUrl: photo.user.links.html,
+        imageUrl: photo.urls.small,
+        photoUrl: photo.links.html,
         likes: photo.likes
       }));
 
       // Create markdown with embedded images
-      const markdownContent = `I found ${data.results.length} photos describing "${query}":
+      const markdownContent = `I found ${data.results.length} photos describing "${query}":\n
 
 ${photos
+
   .map(
     (photo) =>
-      `**${photo.title}**\nBy ${photo.author}\n\n![${photo.title}](${photo.url})\n
-    liked by ${photo.likes}.`
+      `[${photo.title}](${photo.photoUrl})\nBy **[${photo.author}](${photo.authorUrl})**\n\n[![${photo.title}](${photo.imageUrl})](${photo.photoUrl})\n\n**[View full size](${photo.photoUrl})** • ${photo.likes} likes`
   )
-  .join("\n---\n\n")}
-  
+
+  .join("\n\n---\n\n")}
+
   Tell me if you'd like to see more photos or search for something else!`;
 
       return {
