@@ -37,25 +37,46 @@ export class Chat extends AIChatAgent<Env> {
     const allTools = {
       search_unsplash_photos: searchPhotosTool
     } satisfies ToolSet;
-    
+
     const stream = createUIMessageStream({
       execute: async ({ writer }) => {
         // Clean up incomplete tool calls to prevent API errors
         const cleanedMessages = cleanupMessages(this.messages);
 
         // Check if the latest user message might need tools
-        const latestUserMessage = cleanedMessages.slice().reverse().find(msg => msg.role === 'user');
-        const messageText = latestUserMessage?.parts?.find(part => part.type === 'text')?.text?.toLowerCase() || '';
-        
+        const latestUserMessage = cleanedMessages
+          .slice()
+          .reverse()
+          .find((msg) => msg.role === "user");
+        const messageText =
+          latestUserMessage?.parts
+            ?.find((part) => part.type === "text")
+            ?.text?.toLowerCase() || "";
+
         // Keywords that suggest photo/image search is needed
         const photoKeywords = [
-          'show me', 'find', 'i want to see', 'do you have pictures', 'pictures of',
-          'display images', 'look for photos', 'search for images', 'i\'d like to see',
-          'get me pictures', 'provide images', 'fetch photos', 'send', 'give me',
-          'photo', 'image', 'picture'
+          "show me",
+          "find",
+          "i want to see",
+          "do you have pictures",
+          "pictures of",
+          "display images",
+          "look for photos",
+          "search for images",
+          "i'd like to see",
+          "get me pictures",
+          "provide images",
+          "fetch photos",
+          "send",
+          "give me",
+          "photo",
+          "image",
+          "picture"
         ];
-        
-        const needsTools = photoKeywords.some(keyword => messageText.includes(keyword));
+
+        const needsTools = photoKeywords.some((keyword) =>
+          messageText.includes(keyword)
+        );
 
         // Process any pending tool calls from previous messages
         // This handles human-in-the-loop confirmations for tools
@@ -66,17 +87,24 @@ export class Chat extends AIChatAgent<Env> {
           executions: {}
         });
 
+        let toolExecuted = false;
+
         const result = streamText({
           system: `You are a helpful assistant that can search for and display high-quality photos from Unsplash upon request.
-          You can also engage in general conversation and provide assistance as needed.
+          You can also engage in general conversation.
 
-${needsTools ? `You have access to these tools:
-- search_unsplash_photos: Search for photos based on a description or query` : 'You are currently in conversation mode without access to tools.'}
+${
+  needsTools
+    ? `You have access to these tools:
+- search_unsplash_photos: Search for photos based on a description or query`
+    : "You are currently in conversation mode without access to tools."
+}
 
 When a user greets you ("Hi","Hello","Hey" and similar) or asks for help, 
 respond politely and offer assistance offering to search for photos if needed.
-
-${needsTools ? `
+${
+  needsTools
+    ? `
 When a user asks for photos or images:
 1. Use the search_unsplash_photos tool with their query, but do NOT mention the tool usage in your response
 2. The tool returns markdown-formatted image results that you should display as actual images
@@ -86,17 +114,26 @@ IMPORTANT: Return all images the user asked for, do not truncate or limit the nu
 5. If no photos are found, inform the user politely
 6. CRITICAL: After using the tool, DO NOT generate any text response whatsoever
 
-Always use the tool to search for images when users ask for photos, pictures, or any visual content.` : 'Engage in natural conversation and provide helpful responses without using any tools.'}
+Always use the tool to search for images when users ask for photos, pictures, or any visual content.`
+    : "Engage in natural conversation and provide helpful responses without using tools."
+}
 
 `,
 
           messages: convertToModelMessages(processedMessages),
           model,
           ...(needsTools ? { tools: allTools } : {}),
+          onStepFinish: async (step) => {
+            if (step.toolResults && step.toolResults.length > 0) {
+              toolExecuted = true;
+            }
+          },
           onFinish: onFinish as unknown as StreamTextOnFinishCallback<
             typeof allTools
           >,
-          stopWhen: stepCountIs(40)
+          stopWhen: (step) => {
+            return toolExecuted || stepCountIs(20)(step);
+          }
         });
 
         writer.merge(result.toUIMessageStream());

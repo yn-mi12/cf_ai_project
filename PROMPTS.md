@@ -303,4 +303,94 @@ Now when you ask for images:
 
 Try asking for images again and you should see a much cleaner experience with all images displayed in full without any scrolling limitations!
 
+## Made changes.
+
+yn-mi12: free conversation is restricted by "allTools" how to enable it when tools aren't asked for, changing the prompt is not effective
+
+GitHub Copilot: I can see the issue in your server code. The problem is that the `allTools` object is always passed to the `streamText` function, which restricts the model to only use those tools even when free conversation is intended. Let me examine the current implementation and fix it.
+
+Looking at your code, the issue is in the `onChatMessage` method where `allTools` is always provided to the `streamText` call. We need to conditionally pass tools only when they're actually needed.
+
+Using "Replace String in File"
+
+```
+
+```
+
+I need to fix the TypeScript error by using a different approach to find the latest user message:
+
+Using "Replace String in File"
+
+```
+
+```
+
+I need to check the structure of the UIMessage type. Let me look at how messages are structured in this codebase:
+
+Searched for regex `UIMessage|content|parts` (`**/src/**`), 20 results
+
+I can see that UIMessage uses `parts` property instead of `content`. Let me fix this:
+
+Using "Replace String in File"
+
+```
+
+```
+
+Now let's verify the changes by running a type check to make sure there are no more errors:
+
+Ran terminal command: npm run check
+
+## Made changes.
+
+yn-mi12: Please remove the message that's a summary of the query result, printed after the result itself. I think this is an issue connected to "writer.merge(result.toUIMessageStream());"
+
+GitHub Copilot: I need to examine the current code to understand the issue with the summary message being printed after the query result. Let me look at the server.ts file more closely and also check the utils.ts file to see how `processToolCalls` works.
+
+Read [](file:///c%3A/Users/User/cf-ai/src/utils.ts)
+
+Now let me check the tools.ts file more carefully to see what's happening in the `searchPhotos` function:
+
+Read [](file:///c%3A/Users/User/cf-ai/src/tools.ts#60-60), lines 60 to 110
+
+Read [](file:///c%3A/Users/User/cf-ai/src/tools.ts#110-110), lines 110 to 160
+
+I can see the issue! Looking at the system prompt in the server.ts file, there's an instruction that says "CRITICAL: After using the tool, DO NOT generate any text response whatsoever" but the AI model is still generating a summary message after the tool execution.
+
+The problem is that even though the tool returns the properly formatted markdown content, the AI model continues to generate additional text content after the tool call completes. The issue is likely that the `streamText` function continues generating content after tool execution.
+
+Let me examine the system prompt more carefully to see the specific instruction that's causing this:
+
+Read [](file:///c%3A/Users/User/cf-ai/src/server.ts#42-42), lines 42 to 72
+
+Read [](file:///c%3A/Users/User/cf-ai/src/server.ts#72-72), lines 72 to 112
+
+I can see the issue now. The system prompt has the instruction "CRITICAL: After using the tool, DO NOT generate any text response whatsoever" but this approach relies on the AI model to follow that instruction, which isn't reliable. The problem is that the AI model continues generating text after the tool call.
+
+The solution is to modify the code to handle this programmatically. We need to detect when a tool has been used and prevent the model from generating additional content. Looking at the AI SDK documentation and patterns, we can use the `onStepFinish` callback or modify the tool execution to signal completion.
+
+Let me implement a fix by modifying the system prompt and using a more reliable approach:
+
+Using "Replace String in File"
+
+```
+
+```
+
+I need to fix the TypeScript error. Let me check the correct interface for the onStepFinish callback:
+
+Using "Replace String in File"
+
+```
+
+```
+
+Now let me check if there are any remaining TypeScript errors:
+
+Checked [](file:///c%3A/Users/User/cf-ai/src/server.ts), no problems found
+
+Perfect! The changes have been applied successfully and there are no TypeScript errors. Let me run a quick test to make sure the build still works:
+
+Ran terminal command: npm run check
+
 Made changes.

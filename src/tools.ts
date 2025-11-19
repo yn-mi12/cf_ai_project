@@ -136,7 +136,6 @@ ${photos
   )
   .join("\n---\n\n")}`;
 
-
       return {
         content: [
           {
