@@ -119,13 +119,9 @@ export function initializeUnsplashMcp(env?: {
       }
 
       const photos = data.results.map((photo) => ({
-        title: (
-          photo.description ||
-          photo.alt_description ||
-          "Untitled"
-        ).replace(/["\n\r]/g, ""),
+        title: photo.description || photo.alt_description || "Untitled",
         author: `${photo.user.name} (@${photo.user.username})`,
-        url: `/mcp/proxy_image?url=${encodeURIComponent(photo.urls.small)}`
+        url: photo.urls.small
       }));
 
       // Create markdown with embedded images
@@ -178,16 +174,15 @@ ${photos
       description:
         "Search for Unsplash photos based on a query description. Returns a list of high-quality photos matching the search criteria."
     },
-    async (args, _extra) => searchPhotos(args)
+    async (args) => searchPhotos(args)
   );
 
-  // Create the AI tool using the tool function
   const searchPhotosTool = tool({
     description:
       "Search for Unsplash photos based on a query description. Returns a list of high-quality photos matching the search criteria.",
     inputSchema: z.object({
       query: z.string().describe("The search query for finding photos"),
-      limit: z
+      limit: z.coerce
         .number()
         .optional()
         .default(10)

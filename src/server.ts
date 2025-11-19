@@ -56,34 +56,39 @@ export class Chat extends AIChatAgent<Env> {
         });
 
         const result = streamText({
-          system: `You are a helpful assistant that can search for and display high-quality photos from Unsplash.
+          system: `You are a helpful assistant that can search for and display high-quality photos from Unsplash upon request.
+          You can also engage in general conversation and provide assistance as needed.
 
 You have access to these tools:
 - search_unsplash_photos: Search for photos based on a description or query
 
-CRITICAL INSTRUCTIONS:
-- You MUST use the search_unsplash_photos tool for ANY image request
-- You CANNOT generate image URLs yourself
-- You CANNOT create markdown images without using the tool first
-- When a user asks for photos, your ONLY response should be to call search_unsplash_photos
-- Display exactly what the tool returns, nothing more, nothing less
+When a user greets you ("Hi","Hello","Hey" and similar)or asks for help, respond politely and offer assistance. Do NOT
+use any tools unless the user specifically asks for photos or images. Do NOT mention the tools.
 
-DO NOT create any ![image](url) markdown unless it comes from the search_unsplash_photos tool result.
+When a user asks for photos or images:
+
+IMPORTANT: A query can start with phrases like "Show me", "Find me", "I want to see", "Do you have pictures of",
+ "Can you display images of", "Look for photos of", "Search for images of", "I'd like to see", "Get me pictures of", "Provide images of", 
+ "Fetch photos of", "Send", "Give me" or similar variations.
+1. Use the search_unsplash_photos tool with their query, but do NOT mention the tool usage in your response
+2. The tool returns markdown-formatted image results that you should display as actual images
+3. You should include image previews, photographer credits and likes as provided by the tool
+IMPORTANT: Return all images the user asked for, do not truncate or limit the number of images shown
+4. Present the images in an organized, gallery-like format, but do not change the markdown provided by the tool
+5. If no photos are found, inform the user politely
 
 Always use the tool to search for images when users ask for photos, pictures, or visual content.
 
-If the user asks to schedule a task, use the schedule tool to schedule the task.
 `,
 
           messages: convertToModelMessages(processedMessages),
           model,
           tools: allTools,
-          // Type boundary: streamText expects specific tool types, but base class uses ToolSet
-          // This is safe because our tools satisfy ToolSet interface (verified by 'satisfies' in tools.ts)
+
           onFinish: onFinish as unknown as StreamTextOnFinishCallback<
             typeof allTools
           >,
-          stopWhen: stepCountIs(10)
+          stopWhen: stepCountIs(40)
         });
 
         writer.merge(result.toUIMessageStream());
@@ -92,6 +97,7 @@ If the user asks to schedule a task, use the schedule tool to schedule the task.
 
     return createUIMessageStreamResponse({ stream });
   }
+
   async executeTask(description: string, _task: Schedule<string>) {
     await this.saveMessages([
       ...this.messages,
@@ -118,40 +124,6 @@ If the user asks to schedule a task, use the schedule tool to schedule the task.
 export default {
   async fetch(request: Request, env: Env, _ctx: ExecutionContext) {
     const url = new URL(request.url);
-
-    // Handle image proxy requests directly
-    if (url.pathname === "/mcp/proxy_image") {
-      const imageUrl = url.searchParams.get("url");
-      if (!imageUrl) {
-        return new Response("Missing url parameter", { status: 400 });
-      }
-
-      try {
-        const response = await fetch(decodeURIComponent(imageUrl));
-        if (!response.ok) {
-          return new Response("Failed to fetch image", {
-            status: response.status
-          });
-        }
-
-        const contentType =
-          response.headers.get("content-type") || "image/jpeg";
-        const imageData = await response.arrayBuffer();
-
-        return new Response(imageData, {
-          headers: {
-            "Content-Type": contentType,
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET",
-            "Access-Control-Allow-Headers": "Content-Type",
-            "Cache-Control": "public, max-age=3600"
-          }
-        });
-      } catch (error) {
-        console.error("Error proxying image:", error);
-        return new Response("Failed to proxy image", { status: 500 });
-      }
-    }
 
     if (url.pathname.startsWith("/mcp")) return mcpHandler(request, env, _ctx);
 
