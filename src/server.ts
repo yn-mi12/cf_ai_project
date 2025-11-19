@@ -57,7 +57,10 @@ export class Chat extends AIChatAgent<Env> {
         const photoKeywords = [
           "show me",
           "find",
-          "i want to see",
+          "search",
+          "the same",
+          "looking for",
+          "want to see",
           "do you have pictures",
           "pictures of",
           "display images",
@@ -71,7 +74,9 @@ export class Chat extends AIChatAgent<Env> {
           "give me",
           "photo",
           "image",
-          "picture"
+          "picture",
+          "pic",
+          "depict"
         ];
 
         const needsTools = photoKeywords.some((keyword) =>

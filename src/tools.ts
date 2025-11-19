@@ -126,7 +126,7 @@ export function initializeUnsplashMcp(env?: {
       }));
 
       // Create markdown with embedded images
-      const markdownContent = `Found ${data.results.length} photos for "${query}":
+      const markdownContent = `I found ${data.results.length} photos describing "${query}":
 
 ${photos
   .map(
@@ -134,7 +134,9 @@ ${photos
       `**${photo.title}**\nBy ${photo.author}\n\n![${photo.title}](${photo.url})\n
     liked by ${photo.likes}.`
   )
-  .join("\n---\n\n")}`;
+  .join("\n---\n\n")}
+  
+  Tell me if you'd like to see more photos or search for something else!`;
 
       return {
         content: [
