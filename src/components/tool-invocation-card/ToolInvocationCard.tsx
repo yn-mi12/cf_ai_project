@@ -3,6 +3,7 @@ import type { ToolUIPart } from "ai";
 import { Robot, CaretDown } from "@phosphor-icons/react";
 import { Button } from "@/components/button/Button";
 import { Card } from "@/components/card/Card";
+import { MemoizedMarkdown } from "@/components/memoized-markdown";
 import { APPROVAL } from "@/shared";
 
 interface ToolResultWithContent {
@@ -68,17 +69,14 @@ export function ToolInvocationCard({
       </button>
 
       <div
-        className={`transition-all duration-200 ${isExpanded ? "max-h-[200px] opacity-100 mt-3" : "max-h-0 opacity-0 overflow-hidden"}`}
+        className={`transition-all duration-200 ${isExpanded ? "opacity-100 mt-3" : "max-h-0 opacity-0 overflow-hidden"}`}
       >
-        <div
-          className="overflow-y-auto"
-          style={{ maxHeight: isExpanded ? "180px" : "0px" }}
-        >
+        <div className="">
           <div className="mb-3">
             <h5 className="text-xs font-medium mb-1 text-muted-foreground">
               Arguments:
             </h5>
-            <pre className="bg-background/80 p-2 rounded-md text-xs overflow-auto whitespace-pre-wrap break-words max-w-[450px]">
+            <pre className="bg-background/80 p-2 rounded-md text-xs overflow-auto whitespace-pre-wrap break-words">
               {JSON.stringify(toolUIPart.input, null, 2)}
             </pre>
           </div>
@@ -107,11 +105,11 @@ export function ToolInvocationCard({
               <h5 className="text-xs font-medium mb-1 text-muted-foreground">
                 Result:
               </h5>
-              <pre className="bg-background/80 p-2 rounded-md text-xs overflow-auto whitespace-pre-wrap break-words max-w-[450px]">
+              <div className="bg-background/80 p-2 rounded-md text-xs overflow-auto">
                 {(() => {
                   const result = toolUIPart.output;
                   if (isToolResultWithContent(result)) {
-                    return result.content
+                    const content = result.content
                       .map((item: { type: string; text: string }) => {
                         if (
                           item.type === "text" &&
@@ -127,10 +125,29 @@ export function ToolInvocationCard({
                         return item.text;
                       })
                       .join("\n");
+
+                    // Check if content contains markdown (images, headers, etc.)
+                    if (
+                      content.includes("![") ||
+                      content.includes("**") ||
+                      content.includes("---")
+                    ) {
+                      return <MemoizedMarkdown content={content} />;
+                    }
+
+                    return (
+                      <pre className="whitespace-pre-wrap break-words">
+                        {content}
+                      </pre>
+                    );
                   }
-                  return JSON.stringify(result, null, 2);
+                  return (
+                    <pre className="whitespace-pre-wrap break-words">
+                      {JSON.stringify(result, null, 2)}
+                    </pre>
+                  );
                 })()}
-              </pre>
+              </div>
             </div>
           )}
         </div>

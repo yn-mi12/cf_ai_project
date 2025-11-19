@@ -268,7 +268,6 @@ export default function Chat() {
                                     </span>
                                   )}
                                   <MemoizedMarkdown
-                                    id={`${m.id}-${i}`}
                                     content={part.text.replace(
                                       /^scheduled message: /,
                                       ""
