@@ -65,7 +65,7 @@ export function initializeUnsplashMcp(env?: {
   });
 
   mcp.registerResource(
-    "list of photos",
+    "unsplash",
     "https://unsplash.com",
     {},
     async (_uri, extra) => {
@@ -134,7 +134,7 @@ ${photos
 
   .map(
     (photo) =>
-      `[${photo.title}](${photo.photoUrl})\nBy **[${photo.author}](${photo.authorUrl})**\n\n[![${photo.title}](${photo.imageUrl})](${photo.photoUrl})\n\n**[View full size](${photo.photoUrl})** • ${photo.likes} likes`
+      `[${photo.title}](${photo.photoUrl})\nBy **[${photo.author}](${photo.authorUrl})**\n\n[![${photo.title}](${photo.imageUrl})](${photo.photoUrl})\n\n**[View full size](${photo.photoUrl})** • ❤️ ${photo.likes}`
   )
 
   .join("\n\n---\n\n")}
