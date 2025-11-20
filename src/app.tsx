@@ -130,7 +130,7 @@ export default function Chat() {
   };
 
   return (
-    <div className="h-[100vh] w-full p-4 flex justify-center items-center bg-white overflow-hidden">
+    <div className="h-[100vh] w-full p-4 flex justify-center items-center bg-white dark:bg-neutral-950 overflow-hidden">
       <div className="h-[calc(100vh-2rem)] w-full mx-auto max-w-lg flex flex-col shadow-xl rounded-md overflow-hidden relative border border-purple-200/50 dark:border-neutral-700 bg-gradient-to-br from-purple-50/60 via-blue-50/70 to-indigo-100/80 dark:from-slate-800 dark:via-slate-900 dark:to-neutral-900">
         <div className="px-4 py-3 border-b border-purple-200/40 dark:border-neutral-700 flex items-center gap-3 sticky top-0 z-10 bg-gradient-to-r from-purple-100/70 via-blue-100/80 to-indigo-100/70 dark:from-slate-800 dark:via-slate-700 dark:to-slate-800 backdrop-blur-sm">
           <div className="flex items-center justify-center h-8 w-8">
