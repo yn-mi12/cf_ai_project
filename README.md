@@ -68,7 +68,8 @@ npm run deploy
 │   ├── server.ts      # Chat agent logic
 │   ├── tools.ts       # Tool definitions
 │   ├── utils.ts       # Helper functions
-│   └── styles.css     # UI styling
+│   ├── styles.css     # UI styling
+│   └── commons/       # Interfaces and types
 ```
 
 ## Customization Guide

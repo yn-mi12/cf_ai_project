@@ -1,60 +1,13 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { tool } from "ai";
 import { z } from "zod";
+import type { UnsplashSearchResponse } from "./commons/unsplash";
 
-interface UnsplashPhoto {
-  id: string;
-  created_at: string;
-  width: number;
-  height: number;
-  color: string;
-  blur_hash: string;
-  likes: number;
-  liked_by_user: boolean;
-  description: string | null;
-  alt_description?: string;
-  user: {
-    id: string;
-    username: string;
-    name: string;
-    first_name: string;
-    last_name: string;
-    instagram_username: string | null;
-    twitter_username: string | null;
-    portfolio_url: string | null;
-    profile_image: {
-      small: string;
-      medium: string;
-      large: string;
-    };
-    links: {
-      self: string;
-      html: string;
-      photos: string;
-      likes: string;
-    };
-  };
-  current_user_collections: [];
-  urls: {
-    raw: string;
-    full: string;
-    regular: string;
-    small: string;
-    thumb: string;
-  };
-  links: {
-    self: string;
-    html: string;
-    download: string;
-  };
-}
-
-interface UnsplashSearchResponse {
-  total: number;
-  total_pages: number;
-  results: UnsplashPhoto[];
-}
-
+/**
+ * Initializes the Unsplash MCP server and tools
+ * @param env the environment containing Unsplash API credentials
+ * @returns an mcp server instance
+ */
 export function initializeUnsplashMcp(env?: {
   UNSPLASH_CLIENT_ACCESS?: string;
   UNSPLASH_CLIENT_SECRET?: string;
@@ -82,7 +35,6 @@ export function initializeUnsplashMcp(env?: {
     }
   );
 
-  // MCP implementation that returns the expected format
   const searchPhotos = async (args: { query?: string; limit?: number }) => {
     const query = args.query || "";
     const limit = Math.min(args.limit || 10, 30);
@@ -127,7 +79,7 @@ export function initializeUnsplashMcp(env?: {
         likes: photo.likes
       }));
 
-      // Create markdown with embedded images
+      // Create markdown formatted response
       const markdownContent = `I found ${data.results.length} photos describing "${query}":\n
 
 ${photos
@@ -139,7 +91,7 @@ ${photos
 
   .join("\n\n---\n\n")}
 
-  Tell me if you'd like to see more photos or search for something else!`;
+  Tell me if you'd like to see more photos like this or search for something else!`;
 
       return {
         content: [
@@ -166,7 +118,7 @@ ${photos
 
   /**
    * Register the search photos tool
-   * Uses Unsplash API /search/photos endpoint (no auth required for basic search)
+   * Uses Unsplash API /search/photos endpoint
    */
   mcp.registerTool(
     "search_unsplash_photos",
@@ -177,6 +129,7 @@ ${photos
     async (args) => searchPhotos(args)
   );
 
+  // Define the tool to be used by the agent
   const searchPhotosTool = tool({
     description:
       "Search for Unsplash photos based on a query description. Returns a list of high-quality photos matching the search criteria.",

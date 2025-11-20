@@ -60,17 +60,17 @@ export class Chat extends AIChatAgent<Env> {
           "search",
           "the same",
           "more",
+          "fetch",
+          "retrieve",
+          "provide",
+          "display",
           "looking for",
           "want to see",
           "do you have pictures",
           "pictures of",
-          "display images",
-          "look for photos",
-          "search for images",
+          "look for",
           "i'd like to see",
           "get me pictures",
-          "provide images",
-          "fetch photos",
           "send",
           "give me",
           "photo",
@@ -80,6 +80,9 @@ export class Chat extends AIChatAgent<Env> {
           "depict"
         ];
 
+        // Determine if tools are needed based on message content.
+        // Without manual checking, the agent is always in task mode and
+        // cannot engage in free-form chat.
         const needsTools = photoKeywords.some((keyword) =>
           messageText.includes(keyword)
         );
@@ -103,16 +106,17 @@ ${
   needsTools
     ? `You have access to these tools:
 - search_unsplash_photos: Search for photos based on a description or query`
-    : "You are currently in conversation mode without access to tools."
+    : "You are currently in conversation mode and can access tools only with confirmation from the user."
 }
 
 When a user greets you ("Hi","Hello","Hey" and similar) or asks for help, 
-respond politely and offer assistance offering to search for photos if needed.
+respond politely and offer assistance offering to search for photos if needed. If you ask
+if they are searching for a picture and they confirm ("yes"), use the search_unsplash_photos tool.
 ${
   needsTools
     ? `
 When a user asks for photos or images:
-IMPORTANT: try to derive a number even if it is written in words (e.g., "five" = 5).
+IMPORTANT: try to derive a number even if it is written in words (e.g., "five" = 5, "a/an" = 1).
 1. Use the search_unsplash_photos tool with their query, but do NOT mention the tool usage in your response
 2. The tool returns markdown-formatted image results that you should display as actual images
 3. You should include image previews, photographer credits and likes as provided by the tool
