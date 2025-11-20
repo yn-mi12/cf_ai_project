@@ -59,6 +59,7 @@ export class Chat extends AIChatAgent<Env> {
           "find",
           "search",
           "the same",
+          "more",
           "looking for",
           "want to see",
           "do you have pictures",

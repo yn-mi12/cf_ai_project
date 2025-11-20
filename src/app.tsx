@@ -140,7 +140,7 @@ export default function Chat() {
 
           <div className="flex-1">
             <h2 className="font-semibold text-base text-slate-800 dark:text-white">
-              Your Unsplash Assistant
+              Your Photography Assistant
             </h2>
           </div>
 
