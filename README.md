@@ -251,6 +251,32 @@ Each use case can be implemented by:
 3. Extending the agent's capabilities in `server.ts`
 4. Adding any necessary external API integrations
 
+## 🔮 Future Improvements
+
+There is room for many improvements. Here are some potential enhancements and features that could be added to improve the Photography Chat Agent:
+
+### 🤖 AI and Machine Learning Features
+
+- **Better Prompt Engineering**: Learn to switch better from conversation mode to tool usage. Read user intent more accurately - e.g., when they want images vs. when they want text answers, learning from context. Recognize when to ask clarifying questions and when the query is implied (e.g "a picture" = 1 picture).
+
+### 🎨 User Experience Improvements
+
+- **Advanced Search Filters**: Add filters for image orientation, color, size, and licensing types
+- **Search History**: Add search history and favorites functionality
+- **Bulk Operations**: Enable bulk download and batch processing of images
+
+### 🔌 Integration and API Enhancements
+
+- **Multi-Platform Support**: Integrate additional image providers (Pexels, Shutterstock, Getty Images)
+- **Social Media Integration**: Add tools for direct sharing to social media platforms
+- **Adobe Creative Suite Integration**: Enable direct export to Photoshop, Lightroom, and other Adobe tools
+
+### 🛡️ Security and Privacy
+
+- **User Authentication**: Implement secure user accounts and authentication system
+- **Rate Limiting**: Implement intelligent rate limiting to prevent API abuse
+- **Content Moderation**: Add automated content filtering and moderation capabilities
+
 ## 📚 Learn More
 
 - [`agents`](https://github.com/cloudflare/agents/blob/main/packages/agents/README.md)
